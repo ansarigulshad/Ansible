@@ -1,0 +1,8 @@
+
+
+
+yum clean all
+yum install ansible -y
+
+
+
