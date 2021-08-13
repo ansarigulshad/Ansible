@@ -1,0 +1,56 @@
+---
+- name: install_upgrade_R_v4_1_0
+  gather_facts: yes
+  hosts: rserve
+  become: true
+  vars:
+    date: "{{ lookup('pipe', 'date +%d-%m-%y') }}"
+
+  tasks:
+    - name: OS Details
+      debug: msg= "{{ item }}"
+      with_items: 
+      - "{{ ansible_distribution }}"
+      - "{{ ansible_distribution_version }}"
+
+    - name: Fail if Ubuntu version is less than 16.04
+      fail:
+        msg: OS version is not compatible with R-4.1.0. Kindly upgrade OS to ubuntu 16.04 or highr and re-run the job
+      when: ansible_distribution == 'Ubuntu' and ansible_distribution_version < '16.04'
+
+    - name: Fail if RedHat version is less than 7
+      fail:
+        msg: OS version is not compatible with R-4.1.0. Kindly upgrade OS to RedHat 7 or highr and highr and re-run the job
+      when: ansible_distribution == 'RedHat' and ansible_distribution_version < '7'
+
+    - name: Fail if existing R version is 4.1.0
+      shell: R --version | grep 'R version' | awk '{print $3}' | xargs
+      register: r_version
+      failed_when: r_version.stdout == '4.1.0'
+
+    - name: Transfer upgrade-install-R-v4-1-0.sh script to R Server
+      copy:
+        src: /data1/deployment/ansible/files/upgrade-install-R-v4-1-0.sh
+        dest: /tmp/upgrade-install-R-v4-1-0.sh
+
+    - name: Execute the script to upgrade/install R v4.1.0
+      command: sudo bash +x /tmp/upgrade-install-R-v4-1-0.sh
+
+    - name: Transfer r-package-install.sh script to R Server
+      copy:
+        src: /data1/deployment/ansible/files/r-package-install.sh
+        dest: /tmp/r-package-install.sh
+
+    - name: Install R Package -> o9SPWhereUsedV2
+      command: sudo bash +x /tmp/r-package-install.sh o9SPWhereUsedV2
+      
+    - name: Install R Package -> o9RLogger
+      command: sudo bash +x /tmp/r-package-install.sh o9RLogger
+      
+    - name: Restart rserve
+      service:
+        name: rserve
+        state: restarted
+
+
+
